@@ -1,75 +1,116 @@
 const express = require('express'); // Adding Express
 const app = express(); // Initializing Express
+const fs = require('fs');
+const cors = require('cors');
+const { Dataset, KeyValueStore, PuppeteerCrawler } = require('crawlee');
 
-// const crawlee
+app.use(express.urlencoded({extended: false}));
+app.use(express.json());
 
-const { Dataset, KeyValueStore, CriticalError, PuppeteerCrawler } = require('crawlee');
+app.use(
+  cors({
+    origin: 'http://localhost:3000',
+    methods: 'GET, POST',
+    credentials: true
+  })
+);
 
-// import { Dataset, KeyValueStore, PuppeteerCrawler } from 'crawlee';
+app.post('/api/test', (req, res) => {
 
-const criticalError = new CriticalError;
+  res.json({
+    status: 'test'
+  })
+});
 
-app.get('/start', async (req, res) => {
+app.post('/api/start', async (req, res) => {
+
+  res.json({
+    status: req.body,
+  });
+
+  await crawler.run([`${req.body.url}`]);
+});
+
+app.get('/api/start', async (req, res) => {
   res.json({
     status: 'start',
   });
 
-  await crawler.run(['https://modern-house.by/']);
+  await crawler.run(['https://news.ycombinator.com/']);
 });
 
-app.get('/stop', (req, res) => {
+app.get('/api/abort', async (req, res) => {
   res.json({
-    status: 'stop',
+    status: 'abort',
   });
 
+  await crawler.teardown();
+});
+
+app.get('/api/getData', async (req, res) => {
+  try {
+    const crawlData = getCrawlerData();
+    console.log("File written successfully");
+    if (typeof crawlData === 'object' && crawlData.length) res.json(crawlData);
+  } catch(err) {
+    console.error('err');
+    res.json([]);
+  }
+
+});
+
+app.listen(5000, function () {
+  console.log(`Running on port 5000.`);
 });
 
 
+function getCrawlerData() {
+  return JSON.parse(fs.readFileSync('storage/key_value_stores/default/pages.json', 'utf8'));
+}
+
+let id = 1;
 
 const crawler = new PuppeteerCrawler({
   launchContext: {
     launchOptions: {
       headless: false,
-      // Other Puppeteer options
     },
   },
+  maxRequestsPerMinute: 20,
+  minConcurrency: 1,
+  maxConcurrency: 2,
   async requestHandler({ request, page, enqueueLinks }) {
     await page.setViewport({
       width: 320,
       height: 568,
     });
 
-    const dimensions = await page.evaluate(() => {
+    const domain = await page.evaluate(() => document.location.origin);
+    const pageInfo = await page.evaluate(() => {
       return {
-        widthClient: document.documentElement.clientWidth,
+        clientWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
-        responsiveCheck: document.documentElement.clientWidth === document.documentElement.scrollWidth ? 'true' : 'false',
+        responsive: document.documentElement.clientWidth === document.documentElement.scrollWidth,
       };
     });
 
+    const dataSet = await Dataset.open();
+    const array = await dataSet.map(item => item);
+
     await Dataset.pushData({
+      id: id++,
       url: request.url,
-      dimensions
+      ...pageInfo
     });
 
-    const dataSet = await Dataset.open();
+    console.log(domain);
 
-    const pageArray = await dataSet.map(item => item);
-
-    await KeyValueStore.setValue('pages', pageArray);
-
-    console.log('Dimension:', dimensions, 'URL', request.url);
-
+    await KeyValueStore.setValue('pages', array);
     await enqueueLinks({
-      pseudoUrls: ['https://modern-house.by/' + '[(?!\\S+(?:jpe?g|png|bmp|gif|page|sort=|display=|year=|RID=|set_filter=))\\S+]'],
+      strategy: 'same-domain',
+      // globs: ['https://news.ycombinator.com/' + '[(?!\\S+(?:jpe?g|png|bmp|gif|page|sort=|display=|year=|RID=|set_filter=))\\S+]'],
+      globs: [domain + '/*'],
     });
   },
-  // maxRequestsPerCrawl: 10,
-  maxRequestsPerMinute: 15,
 });
 
-
-// Making Express listen on port 5000
-app.listen(5000, function () {
-  console.log(`Running on port 5000.`);
-});
