@@ -25,7 +25,7 @@ app.post('/api/test', (req, res) => {
 app.post('/api/start', async (req, res) => {
 
   res.json({
-    status: req.body,
+    status: 'start',
   });
 
   await crawler.run([`${req.body.url}`]);

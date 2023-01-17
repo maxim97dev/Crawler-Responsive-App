@@ -8,9 +8,15 @@ export default function BasicButtons({ details }) {
     const [disabled, setDisabled] = useState(false);
     const validateUrl = /^(?:)(http|https)?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
 
+
     useEffect(() => {
-        setDisabled(!validateUrl.test(details.url));
-    })
+        console.log('useEffect');
+
+        // (!validateUrl.test(details.url) && disabled) ? setDisabled(false) : setDisabled(true);
+        console.log(!validateUrl.test(details.url));
+        console.log(disabled);
+        // setDisabled(!validateUrl.test(details.url));
+    }, [disabled]);
 
     const startCrawl = async () => {
         try {
@@ -23,8 +29,11 @@ export default function BasicButtons({ details }) {
                 },
                 body: JSON.stringify({ url: details.url, pattern: details.pattern })
             });
+            const result = await response.json();
 
-            return await response.json();
+            // setDisabled(true);
+
+            return result;
         } catch (error) {
             //Handle errors
         }
@@ -46,13 +55,17 @@ export default function BasicButtons({ details }) {
         }
     };
 
+    const colorButton = (!disabled) ? 'success' : 'error';
+
     return (
         <Stack component={Paper} spacing={2} sx={{ mt: 2, p: 2 }} justifyContent="center" direction="row">
             <Button
                 disabled={disabled}
-                onClick={() => {startCrawl()}}
+                onClick={() => {
+                    startCrawl();
+                }}
                 variant="contained"
-                color="success">Start</Button>
+                color={colorButton}>Start</Button>
             <Button onClick={() => stopCrawl()} variant="contained" color="error">Stop</Button>
         </Stack>
     );
