@@ -4,21 +4,20 @@ import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import Paper from "@mui/material/Paper";
 
-export default function BasicButtons({ details }) {
+export default function BasicButtons({ form, run, disableField, runCheck }) {
     const [disabled, setDisabled] = useState(false);
-    const validateUrl = /^(?:)(http|https)?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
-
+    const validateUrl = /^(?:http|https)?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
 
     useEffect(() => {
-        console.log('useEffect');
+        setDisabled(!validateUrl.test(form.url) || run);
+    })
 
-        // (!validateUrl.test(details.url) && disabled) ? setDisabled(false) : setDisabled(true);
-        console.log(!validateUrl.test(details.url));
-        console.log(disabled);
-        // setDisabled(!validateUrl.test(details.url));
-    }, [disabled]);
+    const disablePropButton = (e) => {
+        disableField(e);
+    }
 
     const startCrawl = async () => {
+        console.log(form.url);
         try {
             const response = await fetch('http://localhost:5000/api/start', {
                 method: 'POST',
@@ -27,13 +26,11 @@ export default function BasicButtons({ details }) {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Credentials': 'true'
                 },
-                body: JSON.stringify({ url: details.url, pattern: details.pattern })
+                body: JSON.stringify({ url: form.url, pattern: form.pattern })
             });
-            const result = await response.json();
+            runCheck(true);
 
-            // setDisabled(true);
-
-            return result;
+            return await response.json();
         } catch (error) {
             //Handle errors
         }
@@ -49,24 +46,33 @@ export default function BasicButtons({ details }) {
                 }
             });
 
+            runCheck(false);
+
             return await response.json();
         } catch (error) {
             //Handle errors
         }
     };
 
-    const colorButton = (!disabled) ? 'success' : 'error';
-
     return (
         <Stack component={Paper} spacing={2} sx={{ mt: 2, p: 2 }} justifyContent="center" direction="row">
             <Button
                 disabled={disabled}
                 onClick={() => {
+                    disablePropButton(true);
                     startCrawl();
+
                 }}
                 variant="contained"
-                color={colorButton}>Start</Button>
-            <Button onClick={() => stopCrawl()} variant="contained" color="error">Stop</Button>
+                color="success">Start</Button>
+            <Button
+                disabled={!run}
+                onClick={() => {
+                    disablePropButton(false);
+                    stopCrawl();
+                }}
+                variant="contained"
+                color="error">Stop</Button>
         </Stack>
     );
 }

@@ -34,6 +34,7 @@ const columns = [
         description: 'This column has a value getter and is not sortable.',
         sortable: true,
         align: 'center',
+        headerAlign: 'center',
         flex: 0.3,
         renderCell: ({ value }) => {
             return (value) ? <CheckCircleIcon color="success" /> : <HighlightOffIcon color="error" />
